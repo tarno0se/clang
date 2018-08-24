@@ -870,8 +870,9 @@ private:
     /// Whether this variable is an ARC pseudo-__strong variable; see
     /// isARCPseudoStrong() for details.
     unsigned ARCPseudoStrong : 1;
+    unsigned IsConstexpr : 1;
   };
-  enum { NumVarDeclBits = 8 };
+  enum { NumVarDeclBits = 9 };
 
 protected:
   enum { NumParameterIndexBits = 8 };
@@ -901,6 +902,9 @@ protected:
 
     /// Whether this parameter undergoes K&R argument promotion.
     unsigned IsKNRPromoted : 1;
+
+    /// Whether this is specified a parametric-expression `using` param
+    unsigned IsUsingSpecified : 1;
 
     /// Whether this parameter is an ObjC method parameter or not.
     unsigned IsObjCMethodParam : 1;
@@ -949,9 +953,6 @@ protected:
 
     /// Whether this variable has (C++1z) inline explicitly specified.
     unsigned IsInlineSpecified : 1;
-
-    /// Whether this variable is (C++0x) constexpr.
-    unsigned IsConstexpr : 1;
 
     /// Whether this variable is the implicit variable for a lambda
     /// init-capture.
@@ -1384,11 +1385,10 @@ public:
 
   /// Whether this variable is (C++11) constexpr.
   bool isConstexpr() const {
-    return isa<ParmVarDecl>(this) ? false : NonParmVarDeclBits.IsConstexpr;
+    return VarDeclBits.IsConstexpr;
   }
   void setConstexpr(bool IC) {
-    assert(!isa<ParmVarDecl>(this));
-    NonParmVarDeclBits.IsConstexpr = IC;
+    VarDeclBits.IsConstexpr = IC;
   }
 
   /// Whether this variable is the implicit variable for a lambda init-capture.
@@ -1575,6 +1575,7 @@ protected:
     assert(ParmVarDeclBits.DefaultArgKind == DAK_None);
     assert(ParmVarDeclBits.IsKNRPromoted == false);
     assert(ParmVarDeclBits.IsObjCMethodParam == false);
+    assert(ParmVarDeclBits.IsUsingSpecified == false);
     setDefaultArg(DefArg);
   }
 
@@ -1640,6 +1641,13 @@ public:
   }
   void setKNRPromoted(bool promoted) {
     ParmVarDeclBits.IsKNRPromoted = promoted;
+  }
+
+  bool isUsingSpecified() const {
+    return ParmVarDeclBits.IsUsingSpecified;
+  }
+  void setUsingSpecified(bool specified) {
+    ParmVarDeclBits.IsUsingSpecified = specified;
   }
 
   Expr *getDefaultArg();

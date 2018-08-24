@@ -21,6 +21,7 @@ def IndirectGotoStmt : Stmt;
 def ContinueStmt : Stmt;
 def BreakStmt : Stmt;
 def ReturnStmt : Stmt;
+def ParametricExpressionReturnStmt : Stmt;
 def DeclStmt  : Stmt;
 def SwitchCase : Stmt<1>;
 def CaseStmt : DStmt<SwitchCase>;
@@ -101,6 +102,11 @@ def SourceLocExpr : DStmt<Expr>;
 // Wrapper expressions
 def FullExpr : DStmt<Expr, 1>;
 def ConstantExpr : DStmt<FullExpr>;
+def ParametricExpressionIdExpr : DStmt<Expr>;
+def ParametricExpressionCallExpr : DStmt<Expr>;
+def DependentParametricExpressionCallExpr : DStmt<Expr>;
+def ResolvedUnexpandedPackExpr : DStmt<Expr>;
+def DependentPackOpExpr : DStmt<Expr>;
 
 // Atomic expressions
 def AtomicExpr : DStmt<Expr>;

@@ -5124,6 +5124,7 @@ void CodeGenModule::EmitTopLevelDecl(Decl *D) {
     break;
 
   case Decl::CXXDeductionGuide:
+  case Decl::ParametricExpression:
     // Function-like, but does not result in code emission.
     break;
 

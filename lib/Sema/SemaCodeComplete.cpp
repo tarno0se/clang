@@ -3144,6 +3144,9 @@ static void AddTypedNameChunk(ASTContext &Context, const PrintingPolicy &Policy,
     case OO_Subscript:
       OperatorName = "operator[]";
       break;
+    case OO_PostfixTilde:
+      OperatorName = "operator()~";
+      break;
     }
     Result.AddTypedTextChunk(OperatorName);
     break;

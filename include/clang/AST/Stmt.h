@@ -2627,6 +2627,13 @@ class ReturnStmt final
 
   /// Build a return statement.
   ReturnStmt(SourceLocation RL, Expr *E, const VarDecl *NRVOCandidate);
+  ReturnStmt(StmtClass SC, SourceLocation RL, Expr *E,
+             const VarDecl *NRVOCandidate)
+      : Stmt(SC), RetLoc(RL), RetExpr((Stmt *)E),
+        NRVOCandidate(NRVOCandidate) {}
+
+  ReturnStmt(StmtClass SC, EmptyShell Empty)
+      : Stmt(SC, Empty) {}
 
   /// Build an empty return statement.
   explicit ReturnStmt(EmptyShell Empty, bool HasNRVOCandidate);

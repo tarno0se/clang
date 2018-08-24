@@ -450,6 +450,7 @@ namespace clang {
     void VisitOMPDeclareMapperDecl(OMPDeclareMapperDecl *D);
     void VisitOMPRequiresDecl(OMPRequiresDecl *D);
     void VisitOMPCapturedExprDecl(OMPCapturedExprDecl *D);
+    void VisitParametricExpressionDecl(ParametricExpressionDecl *D);
   };
 
 } // namespace clang
@@ -1371,7 +1372,7 @@ ASTDeclReader::RedeclarableResult ASTDeclReader::VisitVarDeclImpl(VarDecl *VD) {
     VD->NonParmVarDeclBits.ObjCForDecl = Record.readInt();
     VD->NonParmVarDeclBits.IsInline = Record.readInt();
     VD->NonParmVarDeclBits.IsInlineSpecified = Record.readInt();
-    VD->NonParmVarDeclBits.IsConstexpr = Record.readInt();
+    VD->VarDeclBits.IsConstexpr = Record.readInt();
     VD->NonParmVarDeclBits.IsInitCapture = Record.readInt();
     VD->NonParmVarDeclBits.PreviousDeclInSameBlockScope = Record.readInt();
     VD->NonParmVarDeclBits.ImplicitParamKind = Record.readInt();
@@ -2721,6 +2722,10 @@ void ASTDeclReader::VisitOMPDeclareMapperDecl(OMPDeclareMapperDecl *D) {
 
 void ASTDeclReader::VisitOMPCapturedExprDecl(OMPCapturedExprDecl *D) {
   VisitVarDecl(D);
+}
+
+void ASTDeclReader::VisitParametricExpressionDecl(ParametricExpressionDecl *D) {
+  VisitNamedDecl(D);
 }
 
 //===----------------------------------------------------------------------===//

@@ -3363,6 +3363,7 @@ bool Expr::HasSideEffects(const ASTContext &Ctx,
   case FunctionParmPackExprClass:
   case TypoExprClass:
   case CXXFoldExprClass:
+  case DependentPackOpExprClass:
     llvm_unreachable("shouldn't see dependent / unresolved nodes here");
 
   case DeclRefExprClass:
@@ -3397,6 +3398,7 @@ bool Expr::HasSideEffects(const ASTContext &Ctx,
   case CXXUuidofExprClass:
   case OpaqueValueExprClass:
   case SourceLocExprClass:
+  case ParametricExpressionIdExprClass:
     // These never have a side-effect.
     return false;
 
@@ -3472,6 +3474,9 @@ bool Expr::HasSideEffects(const ASTContext &Ctx,
   case ShuffleVectorExprClass:
   case ConvertVectorExprClass:
   case AsTypeExprClass:
+  case ParametricExpressionCallExprClass:
+  case DependentParametricExpressionCallExprClass:
+  case ResolvedUnexpandedPackExprClass:
     // These have a side-effect if any subexpression does.
     break;
 

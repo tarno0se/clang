@@ -2849,6 +2849,8 @@ StringRef BuiltinType::getName(const PrintingPolicy &Policy) const {
     return "<overloaded function type>";
   case BoundMember:
     return "<bound member function type>";
+  case ParametricExpressionId:
+    return "<parametric expression id>";
   case PseudoObject:
     return "<pseudo-object type>";
   case Dependent:
@@ -3889,6 +3891,7 @@ bool Type::canHaveNullability(bool ResultIfUnknown) const {
     case BuiltinType::BuiltinFn:
     case BuiltinType::NullPtr:
     case BuiltinType::OMPArraySection:
+    case BuiltinType::ParametricExpressionId:
       return false;
     }
     llvm_unreachable("unknown builtin type");

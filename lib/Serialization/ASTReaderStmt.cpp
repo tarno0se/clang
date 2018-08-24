@@ -338,6 +338,14 @@ void ASTStmtReader::VisitReturnStmt(ReturnStmt *S) {
   S->setReturnLoc(ReadSourceLocation());
 }
 
+void ASTStmtReader::VisitParametricExpressionReturnStmt(
+    ParametricExpressionReturnStmt *S) {
+  VisitStmt(S);
+  S->setRetValue(Record.readSubExpr());
+  S->setReturnLoc(ReadSourceLocation());
+  S->setNRVOCandidate(ReadDeclAs<VarDecl>());
+}
+
 void ASTStmtReader::VisitDeclStmt(DeclStmt *S) {
   VisitStmt(S);
   S->setStartLoc(ReadSourceLocation());
@@ -807,6 +815,34 @@ void ASTStmtReader::VisitMemberExpr(MemberExpr *E) {
     ReadTemplateKWAndArgsInfo(
         *E->getTrailingObjects<ASTTemplateKWAndArgsInfo>(),
         E->getTrailingObjects<TemplateArgumentLoc>(), NumTemplateArgs);
+}
+
+void ASTStmtReader::VisitParametricExpressionIdExpr(
+                                    ParametricExpressionIdExpr *E) {
+  // TODO JASON
+  // TODO set BeginLoc
+  // TODO set DefinitionDecl (how do we get that?)
+  // TODO add friend class ASTStmtReader
+}
+
+void ASTStmtReader::VisitParametricExpressionCallExpr(
+                                  ParametricExpressionCallExpr *E) {
+  llvm_unreachable("Cannot read ParametricExpressionCallExpr nodes");
+}
+
+void ASTStmtReader::VisitDependentParametricExpressionCallExpr(
+                         DependentParametricExpressionCallExpr *E) {
+  llvm_unreachable("Cannot read ParametricExpressionCallExpr nodes");
+}
+
+void ASTStmtReader::VisitResolvedUnexpandedPackExpr(
+                                    ResolvedUnexpandedPackExpr *S) {
+  llvm_unreachable("Cannot read ResolvedUnexpandedPackExpr nodes");
+}
+
+void ASTStmtReader::VisitDependentPackOpExpr(
+                                           DependentPackOpExpr *S) {
+  llvm_unreachable("Cannot read DependentPackOpExpr nodes");
 }
 
 void ASTStmtReader::VisitObjCIsaExpr(ObjCIsaExpr *E) {
@@ -2520,6 +2556,10 @@ Stmt *ASTReader::ReadStmtFromStream(ModuleFile &F) {
     case STMT_RETURN:
       S = ReturnStmt::CreateEmpty(
           Context, /* HasNRVOCandidate=*/Record[ASTStmtReader::NumStmtFields]);
+      break;
+
+    case STMT_PARAMETRIC_EXPRESSION_RETURN:
+      S = new (Context) ParametricExpressionReturnStmt(Empty);
       break;
 
     case STMT_DECL:

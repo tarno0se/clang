@@ -1291,6 +1291,7 @@ void MicrosoftCXXNameMangler::mangleOperatorName(OverloadedOperatorKind OO,
     break;
   }
 
+  case OO_PostfixTilde: // special case
   case OO_None:
   case NUM_OVERLOADED_OPERATORS:
     llvm_unreachable("Not an overloaded operator");

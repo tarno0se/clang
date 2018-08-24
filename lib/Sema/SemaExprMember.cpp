@@ -162,6 +162,9 @@ static IMAKind ClassifyImplicitMemberAccess(Sema &SemaRef,
   CXXRecordDecl *contextClass;
   if (CXXMethodDecl *MD = dyn_cast<CXXMethodDecl>(DC))
     contextClass = MD->getParent()->getCanonicalDecl();
+  else if (ParametricExpressionDecl *PD =
+                dyn_cast<ParametricExpressionDecl>(DC))
+    contextClass = cast<CXXRecordDecl>(PD->getParent());
   else
     contextClass = cast<CXXRecordDecl>(DC);
 
@@ -1166,6 +1169,11 @@ Sema::BuildMemberReferenceExpr(Expr *BaseExpr, QualType BaseExprType,
           /*HadMultipleCandidates=*/false, MemberNameInfo,
           Var->getType().getNonReferenceType(), VK_LValue, OK_Ordinary);
     return ExprError();
+  }
+  if (ParametricExpressionDecl *PDecl
+      = dyn_cast<ParametricExpressionDecl>(MemberDecl)) {
+    return ParametricExpressionIdExpr::Create(Context, MemberNameInfo.getLoc(),
+                                             PDecl, BaseExpr);
   }
 
   // We found something that we didn't expect. Complain.

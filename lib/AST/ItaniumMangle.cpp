@@ -2219,6 +2219,7 @@ CXXNameMangler::mangleOperatorName(OverloadedOperatorKind OO, unsigned Arity) {
   //              ::= ss        # <=>
   case OO_Spaceship: Out << "ss"; break;
 
+  case OO_PostfixTilde: // special case
   case OO_None:
   case NUM_OVERLOADED_OPERATORS:
     llvm_unreachable("Not an overloaded operator");
@@ -3582,6 +3583,9 @@ recurse:
   case Expr::TypoExprClass:  // This should no longer exist in the AST by now.
   case Expr::OMPArraySectionExprClass:
   case Expr::CXXInheritedCtorInitExprClass:
+  case Expr::ParametricExpressionIdExprClass:
+  case Expr::DependentParametricExpressionCallExprClass:
+  case Expr::DependentPackOpExprClass:
     llvm_unreachable("unexpected statement kind");
 
   case Expr::ConstantExprClass:
@@ -3624,6 +3628,8 @@ recurse:
   case Expr::SourceLocExprClass:
   case Expr::FixedPointLiteralClass:
   case Expr::BuiltinBitCastExprClass:
+  case Expr::ParametricExpressionCallExprClass:
+  case Expr::ResolvedUnexpandedPackExprClass:
   {
     if (!NullOut) {
       // As bad as this diagnostic is, it's better than crashing.

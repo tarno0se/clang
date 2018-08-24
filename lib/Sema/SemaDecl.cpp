@@ -1053,6 +1053,12 @@ Corrected:
     return NameClassification::Error();
   }
 
+  if (NextToken.is(tok::l_paren) &&
+      Result.getAsSingle<ParametricExpressionDecl>()) {
+    return ExprResult(ParametricExpressionIdExpr::Create(Context, NameLoc,
+        Result.getAsSingle<ParametricExpressionDecl>()));
+  }
+
   if (getLangOpts().CPlusPlus && NextToken.is(tok::less) &&
       (IsFilteredTemplateName ||
        hasAnyAcceptableTemplateNames(
@@ -12553,8 +12559,11 @@ Decl *Sema::ActOnParamDeclarator(Scope *S, Declarator &D) {
     Diag(DS.getInlineSpecLoc(), diag::err_inline_non_function)
         << getLangOpts().CPlusPlus17;
   if (DS.hasConstexprSpecifier())
+    if(D.getContext() !=
+        DeclaratorContext::ParametricExpressionParameterContext)
     Diag(DS.getConstexprSpecLoc(), diag::err_invalid_constexpr)
         << 0 << (D.getDeclSpec().getConstexprSpecifier() == CSK_consteval);
+
 
   DiagnoseFunctionSpecifiers(DS);
 
@@ -12594,6 +12603,19 @@ Decl *Sema::ActOnParamDeclarator(Scope *S, Declarator &D) {
   ParmVarDecl *New =
       CheckParameter(Context.getTranslationUnitDecl(), D.getBeginLoc(),
                      D.getIdentifierLoc(), II, parmDeclType, TInfo, SC);
+
+  if (DS.isUsingSpecified()) {
+    assert(D.getContext() ==
+        DeclaratorContext::ParametricExpressionParameterContext
+      && "`using` param only allowed in parametric-expression");
+    New->setUsingSpecified(true);
+  }
+  if (DS.isConstexprSpecified()) {
+    assert(D.getContext() ==
+        DeclaratorContext::ParametricExpressionParameterContext
+      && "`constexpr` param only allowed in parametric-expression");
+    New->setConstexpr(true);
+  }
 
   if (D.isInvalidType())
     New->setInvalidDecl();
