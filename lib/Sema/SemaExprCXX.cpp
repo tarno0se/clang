@@ -8036,3 +8036,16 @@ Sema::FinishCallExpr(Expr *E)
   return MaybeBindToTemporary(E);
 }
 
+ExprResult Sema::ActOnUserDefinedAttribute(Scope *CurScope, AccessSpecifier AS,  Expr* Call) {
+  CXXConstructExpr *ConstructorCall = dyn_cast<CXXConstructExpr>(Call);
+  //assert(ConstructorCall && "Expressions in attributes declarations should be constructor calls");
+  //CXXConstructorDecl* D = ConstructorCall->getConstructor()->getCanonicalDecl();
+  //TODO check for attribute
+
+  SmallVector<PartialDiagnosticAt, 4> Diags;
+  Expr::EvalResult Result;
+  auto Res = EvaluateImmediateFunction(*this, Call);
+  return Res;
+}
+
+

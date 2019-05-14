@@ -312,9 +312,51 @@ static bool GetTypeAndQuery(Sema &SemaRef, Expr *&Arg, QualType &ResultTy,
     return SetType(ResultTy, SemaRef.Context.MetaInfoTy);
   if (isNameQuery(Query))
     return SetCStrType(ResultTy, SemaRef.Context);
+  if (Query == ReflectionQuery::RQ_get_attribute) {
+    //determine the type later
+    return true;
+  }
+  if (Query == ReflectionQuery::RQ_has_attribute) {
+    return SetType(ResultTy, SemaRef.Context.BoolTy);
+  }
 
   SemaRef.Diag(Arg->getExprLoc(), diag::err_reflection_query_invalid);
   return false;
+}
+
+static bool EvaluateReflection(Sema &S, Expr *E, Reflection &R) {
+  SmallVector<PartialDiagnosticAt, 4> Diags;
+  Expr::EvalResult Result;
+  Result.Diag = &Diags;
+  if (!E->EvaluateAsRValue(Result, S.Context)) {
+    S.Diag(E->getExprLoc(), diag::reflection_not_constant_expression);
+    for (PartialDiagnosticAt PD : Diags)
+      S.Diag(PD.first, PD.second);
+    return true;
+  }
+
+  R = Reflection(S.Context, Result.Val);
+  return false;
+}
+
+static void DiagnoseInvalidReflection(Sema &SemaRef, Expr *Refl,
+                                      const Reflection &R) {
+  SemaRef.Diag(Refl->getExprLoc(), diag::err_reify_invalid_reflection);
+
+  const InvalidReflection *InvalidRefl = R.getAsInvalidReflection();
+  if (!InvalidRefl)
+    return;
+
+  const Expr *ErrorMessage = InvalidRefl->ErrorMessage;
+  const StringLiteral *Message = cast<StringLiteral>(ErrorMessage);
+
+  // Evaluate the message so that we can transform it into a string.
+  SmallString<256> Buf;
+  llvm::raw_svector_ostream OS(Buf);
+  Message->outputString(OS);
+  std::string NonQuote(Buf.str(), 1, Buf.size() - 2);
+
+  SemaRef.Diag(Refl->getExprLoc(), diag::note_user_defined_note) << NonQuote;
 }
 
 ExprResult Sema::ActOnCXXReflectionTrait(SourceLocation KWLoc,
@@ -322,10 +364,10 @@ ExprResult Sema::ActOnCXXReflectionTrait(SourceLocation KWLoc,
                                          SourceLocation LParenLoc,
                                          SourceLocation RParenLoc) {
   // FIXME: There are likely unary and n-ary queries.
-  if (Args.size() != 2) {
+  /*if (Args.size() != 2) {
     Diag(KWLoc, diag::err_reflection_wrong_arity) << (int)Args.size();
     return ExprError();
-  }
+  }*/
 
   // Get the type of the query. Note that this will convert Args[0].
   QualType Ty;
@@ -340,6 +382,17 @@ ExprResult Sema::ActOnCXXReflectionTrait(SourceLocation KWLoc,
       return ExprError();
     Args[I] = Arg.get();
   }
+  if(Query == ReflectionQuery::RQ_get_attribute) {
+    Reflection R;
+    if (EvaluateReflection(*this, Args[2], R))
+      return ExprError();
+    if (R.isInvalid()) {
+      DiagnoseInvalidReflection(*this, Args[2], R);
+      return ExprError();
+    }
+    SetType(Ty, R.getAsType());
+  }
+
 
   return new (Context) CXXReflectionTraitExpr(Context, Ty, Query, Args, 
                                               KWLoc, LParenLoc, RParenLoc);
@@ -462,40 +515,7 @@ ExprResult Sema::BuildCXXCompilerErrorExpr(Expr *MessageExpr,
                                       BuiltinLoc, RParenLoc);
 }
 
-static bool EvaluateReflection(Sema &S, Expr *E, Reflection &R) {
-  SmallVector<PartialDiagnosticAt, 4> Diags;
-  Expr::EvalResult Result;
-  Result.Diag = &Diags;
-  if (!E->EvaluateAsRValue(Result, S.Context)) {
-    S.Diag(E->getExprLoc(), diag::reflection_not_constant_expression);
-    for (PartialDiagnosticAt PD : Diags)
-      S.Diag(PD.first, PD.second);
-    return true;
-  }
 
-  R = Reflection(S.Context, Result.Val);
-  return false;
-}
-
-static void DiagnoseInvalidReflection(Sema &SemaRef, Expr *Refl,
-                                      const Reflection &R) {
-  SemaRef.Diag(Refl->getExprLoc(), diag::err_reify_invalid_reflection);
-
-  const InvalidReflection *InvalidRefl = R.getAsInvalidReflection();
-  if (!InvalidRefl)
-    return;
-
-  const Expr *ErrorMessage = InvalidRefl->ErrorMessage;
-  const StringLiteral *Message = cast<StringLiteral>(ErrorMessage);
-
-  // Evaluate the message so that we can transform it into a string.
-  SmallString<256> Buf;
-  llvm::raw_svector_ostream OS(Buf);
-  Message->outputString(OS);
-  std::string NonQuote(Buf.str(), 1, Buf.size() - 2);
-
-  SemaRef.Diag(Refl->getExprLoc(), diag::note_user_defined_note) << NonQuote;
-}
 
 ExprResult Sema::ActOnCXXIdExprExpr(SourceLocation KWLoc,
                                     Expr *Refl,

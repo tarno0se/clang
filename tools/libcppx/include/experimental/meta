@@ -143,7 +143,10 @@ enum reflection_query : unsigned {
 
   // Name
   query_get_name,
-  query_get_display_name
+  query_get_display_name,
+
+  query_get_attribute,
+  query_has_attribute
 };
 
 static constexpr unsigned get_decl_traits(info x) {
@@ -1027,6 +1030,17 @@ consteval string_type name_of(info x) {
 consteval string_type display_name_of(info x) {
   return __reflect(detail::query_get_display_name, x);
 }
+
+template <typename Attr>
+consteval Attr attribute(info x) {
+  return __reflect(detail::query_get_attribute, x, reflexpr(Attr));
+}
+
+template <typename Attr>
+consteval bool has_attribute(info x) {
+  return __reflect(detail::query_has_attribute, x, reflexpr(Attr));
+}
+
 
 // -------------------------------------------------------------------------- //
 // General purpose queries

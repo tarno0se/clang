@@ -38,6 +38,7 @@ namespace clang {
   class QualType;
   class FunctionDecl;
   class TypeSourceInfo;
+  class CXXConstantExpr;
 
 /// Attr - This represents one attribute.
 class Attr {
@@ -176,6 +177,30 @@ public:
     return A->getKind() >= attr::FirstInheritableParamAttr &&
            A->getKind() <= attr::LastInheritableParamAttr;
   }
+};
+
+class UserDefinedAttr : public InheritableAttr {
+public:
+  static UserDefinedAttr *Create(ASTContext &Ctx, CXXConstantExpr* Expr, SourceRange Loc = SourceRange()) {
+    auto *A = new (Ctx) UserDefinedAttr(Loc, Ctx, Expr);
+    return A;
+  }
+
+  UserDefinedAttr(SourceRange R, ASTContext &Ctx, CXXConstantExpr* Expr)
+      : InheritableAttr(attr::Kind::UserDefinedAttribute, R, 0, false, false), Expr(Expr)
+  {
+  }
+
+  UserDefinedAttr *clone(ASTContext &C) const;
+  void printPretty(raw_ostream &OS, const PrintingPolicy &Policy) const;
+  static bool classof(const Attr *A) { return A->getKind() == attr::UserDefinedAttribute; }
+
+  APValue getValue() const;
+  Expr *getExpression() const;
+
+
+private:
+  CXXConstantExpr* Expr;
 };
 
 /// A parameter attribute which changes the argument-passing ABI rule

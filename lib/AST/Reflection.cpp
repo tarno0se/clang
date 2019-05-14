@@ -1705,6 +1705,52 @@ bool Reflection::GetName(ReflectionQuery Q, APValue &Result) {
   llvm_unreachable("invalid name selector");
 }
 
+
+static bool Match(QualType a, QualType b) {
+  return a->getCanonicalTypeUnqualified() == b->getCanonicalTypeUnqualified();
+}
+
+bool Reflection::GetUserDefinedAttribute(ReflectionQuery Q, APValue AttributeType, APValue &Result) {
+  assert(Q == ReflectionQuery::RQ_get_attribute && "invalid query");
+  ASTContext &Ctx = getContext();
+  QualType ReflectedAttribute = AttributeType.getReflectedType();
+  if(ReflectedAttribute.isNull())
+    return false;
+
+  if (const Decl *D = getReachableDecl(*this)) {
+    for (const auto *UD : D->specific_attrs<UserDefinedAttr>()) {
+      auto Expr = UD->getExpression();
+      auto Type = Expr->getType();
+      if(Match(Type, ReflectedAttribute)) {
+        Result = UD->getValue();
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+bool Reflection::HasUserDefinedAttribute(ReflectionQuery Q, APValue AttributeType, APValue &Result) {
+  assert(Q == ReflectionQuery::RQ_has_attribute && "invalid query");
+  ASTContext &Ctx = getContext();
+  QualType ReflectedAttribute = AttributeType.getReflectedType();
+  if(ReflectedAttribute.isNull())
+    return false;
+
+  if (const Decl *D = getReachableDecl(*this)) {
+    for (const auto *UD : D->specific_attrs<UserDefinedAttr>()) {
+      auto Expr = UD->getExpression();
+      auto Type = Expr->getType();
+      if(Match(Type, ReflectedAttribute)) {
+        SuccessTrue(*this, Result);
+        return true;
+      }
+    }
+  }
+  SuccessFalse(*this, Result);
+  return true;
+}
+
 /// Returns true if canonical types are equal.
 static bool EqualTypes(ASTContext &Ctx, QualType A, QualType B) {
   CanQualType CanA = Ctx.getCanonicalType(A);

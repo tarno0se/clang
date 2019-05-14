@@ -6358,7 +6358,7 @@ static bool handleCommonAttributeFeatures(Sema &S, Decl *D,
   //
   // We also bail on unknown and ignored attributes because those are handled
   // as part of the target-specific handling logic.
-  if (AL.getKind() == ParsedAttr::UnknownAttribute)
+  if (AL.getKind() == ParsedAttr::UnknownAttribute || AL.getKind() == ParsedAttr::UserDefinedAttribute)
     return false;
   // Check whether the attribute requires specific language extensions to be
   // enabled.
@@ -6562,6 +6562,10 @@ static void handleMSAllocatorAttr(Sema &S, Decl *D, const ParsedAttr &AL) {
   handleSimpleAttribute<MSAllocatorAttr>(S, D, AL);
 }
 
+static void handleUserDefinedAttr(Sema &S, Decl *D, const ParsedAttr &AL) {
+  D->addAttr(UserDefinedAttr::Create(S.Context, dyn_cast<CXXConstantExpr>(AL.getConstructorExpr()), AL.getRange()));
+}
+
 //===----------------------------------------------------------------------===//
 // Top Level Sema Entry Points
 //===----------------------------------------------------------------------===//
@@ -6583,8 +6587,8 @@ static void ProcessDeclAttribute(Sema &S, Scope *scope, Decl *D,
   // Unknown attributes are automatically warned on. Target-specific attributes
   // which do not apply to the current target architecture are treated as
   // though they were unknown attributes.
-  if (AL.getKind() == ParsedAttr::UnknownAttribute ||
-      !AL.existsInTarget(S.Context.getTargetInfo())) {
+  if (AL.getKind() != ParsedAttr::UserDefinedAttribute && (AL.getKind() == ParsedAttr::UnknownAttribute ||
+                                                       !AL.existsInTarget(S.Context.getTargetInfo()))) {
     S.Diag(AL.getLoc(),
            AL.isDeclspecAttribute()
                ? (unsigned)diag::warn_unhandled_ms_attribute_ignored
@@ -6606,6 +6610,10 @@ static void ProcessDeclAttribute(Sema &S, Scope *scope, Decl *D,
     S.Diag(AL.getLoc(), diag::err_stmt_attribute_invalid_on_decl)
         << AL << D->getLocation();
     break;
+  case ParsedAttr::UserDefinedAttribute: {
+    handleUserDefinedAttr(S, D, AL);
+    break;
+  }
   case ParsedAttr::AT_Interrupt:
     handleInterruptAttr(S, D, AL);
     break;

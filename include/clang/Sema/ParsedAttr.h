@@ -201,6 +201,9 @@ private:
   /// True if this has a ParsedType
   unsigned HasParsedType : 1;
 
+  /// True if this has an Exp corresponding to a constructor call
+  unsigned HasParsedConstructorExpression : 1;
+
   /// True if the processing cache is valid.
   mutable unsigned HasProcessingCache : 1;
 
@@ -214,7 +217,10 @@ private:
   /// availability attribute.
   SourceLocation UnavailableLoc;
 
-  const Expr *MessageExpr;
+  union {
+    const Expr *MessageExpr;
+    Expr *ConstructorExpression;
+  };
 
   ArgsUnion *getArgsBuffer() { return getTrailingObjects<ArgsUnion>(); }
   ArgsUnion const *getArgsBuffer() const {
@@ -241,7 +247,8 @@ private:
         ScopeLoc(scopeLoc), EllipsisLoc(ellipsisLoc), NumArgs(numArgs),
         SyntaxUsed(syntaxUsed), Invalid(false), UsedAsTypeAttr(false),
         IsAvailability(false), IsTypeTagForDatatype(false), IsProperty(false),
-        HasParsedType(false), HasProcessingCache(false),
+        HasParsedType(false),  HasParsedConstructorExpression(false),
+        HasProcessingCache(false),
         IsPragmaClangAttribute(false) {
     if (numArgs) memcpy(getArgsBuffer(), args, numArgs * sizeof(ArgsUnion));
     AttrKind = getKind(getName(), getScopeName(), syntaxUsed);
@@ -259,6 +266,7 @@ private:
         ScopeLoc(scopeLoc), NumArgs(1), SyntaxUsed(syntaxUsed), Invalid(false),
         UsedAsTypeAttr(false), IsAvailability(true),
         IsTypeTagForDatatype(false), IsProperty(false), HasParsedType(false),
+        HasParsedConstructorExpression(false),
         HasProcessingCache(false), IsPragmaClangAttribute(false),
         UnavailableLoc(unavailable), MessageExpr(messageExpr) {
     ArgsUnion PVal(Parm);
@@ -277,6 +285,7 @@ private:
         ScopeLoc(scopeLoc), NumArgs(3), SyntaxUsed(syntaxUsed), Invalid(false),
         UsedAsTypeAttr(false), IsAvailability(false),
         IsTypeTagForDatatype(false), IsProperty(false), HasParsedType(false),
+        HasParsedConstructorExpression(false),
         HasProcessingCache(false), IsPragmaClangAttribute(false) {
     ArgsUnion *Args = getArgsBuffer();
     Args[0] = Parm1;
@@ -294,6 +303,7 @@ private:
         ScopeLoc(scopeLoc), NumArgs(1), SyntaxUsed(syntaxUsed), Invalid(false),
         UsedAsTypeAttr(false), IsAvailability(false),
         IsTypeTagForDatatype(true), IsProperty(false), HasParsedType(false),
+        HasParsedConstructorExpression(false),
         HasProcessingCache(false), IsPragmaClangAttribute(false) {
     ArgsUnion PVal(ArgKind);
     memcpy(getArgsBuffer(), &PVal, sizeof(ArgsUnion));
@@ -312,6 +322,7 @@ private:
         ScopeLoc(scopeLoc), NumArgs(0), SyntaxUsed(syntaxUsed), Invalid(false),
         UsedAsTypeAttr(false), IsAvailability(false),
         IsTypeTagForDatatype(false), IsProperty(false), HasParsedType(true),
+        HasParsedConstructorExpression(false),
         HasProcessingCache(false), IsPragmaClangAttribute(false) {
     new (&getTypeBuffer()) ParsedType(typeArg);
     AttrKind = getKind(getName(), getScopeName(), syntaxUsed);
@@ -326,9 +337,23 @@ private:
         ScopeLoc(scopeLoc), NumArgs(0), SyntaxUsed(syntaxUsed), Invalid(false),
         UsedAsTypeAttr(false), IsAvailability(false),
         IsTypeTagForDatatype(false), IsProperty(true), HasParsedType(false),
+        HasParsedConstructorExpression(false),
         HasProcessingCache(false), IsPragmaClangAttribute(false) {
     new (&getPropertyDataBuffer()) detail::PropertyData(getterId, setterId);
     AttrKind = getKind(getName(), getScopeName(), syntaxUsed);
+  }
+
+
+  /// Constructor for user defined attributes
+  ParsedAttr(Expr* constructionExpression, SourceRange attrRange)
+      : AttrName(nullptr), ScopeName(nullptr), AttrRange(attrRange),
+        NumArgs(0), SyntaxUsed(AS_CXX11), Invalid(false),
+        UsedAsTypeAttr(false), IsAvailability(false),
+        IsTypeTagForDatatype(true), IsProperty(false), HasParsedType(false),
+        HasParsedConstructorExpression(true),
+        HasProcessingCache(false), IsPragmaClangAttribute(false),
+        ConstructorExpression(constructionExpression) {
+    AttrKind = UserDefinedAttribute;
   }
 
   /// Type tag information is stored immediately following the arguments, if
@@ -374,6 +399,7 @@ public:
     #define PARSED_ATTR(NAME) AT_##NAME,
     #include "clang/Sema/AttrParsedAttrList.inc"
     #undef PARSED_ATTR
+    UserDefinedAttribute,
     IgnoredAttribute,
     UnknownAttribute
   };
@@ -545,6 +571,11 @@ public:
     assert(isDeclspecPropertyAttribute() &&
            "Not a __delcspec(property) attribute");
     return getPropertyDataBuffer().SetterId;
+  }
+
+  Expr *getConstructorExpr() const {
+    assert(getKind() == UserDefinedAttribute && "Not an user-defined attribute");
+    return ConstructorExpression;
   }
 
   /// Get an index into the attribute spelling list
@@ -783,6 +814,14 @@ public:
     return add(new (memory) ParsedAttr(attrName, attrRange, scopeName, scopeLoc,
                                        getterId, setterId, syntaxUsed));
   }
+
+  ParsedAttr *create(Expr* r, SourceRange attrRange) {
+    void *memory = allocate(
+        ParsedAttr::totalSizeToAlloc<ArgsUnion, detail::AvailabilityData,
+                                     detail::TypeTagForDatatypeData, ParsedType,
+                                     detail::PropertyData>(0, 0, 0, 0, 0));
+    return add(new (memory) ParsedAttr(r, attrRange));
+  }
 };
 
 class ParsedAttributesView {
@@ -978,6 +1017,13 @@ public:
     ParsedAttr *attr =
         pool.createPropertyAttribute(attrName, attrRange, scopeName, scopeLoc,
                                      getterId, setterId, syntaxUsed);
+    addAtEnd(attr);
+    return attr;
+  }
+
+  /// Add user-defined attribute
+  ParsedAttr *addNew(Expr* constructorCall, SourceRange attrRange) {
+    ParsedAttr *attr = pool.create(constructorCall, attrRange);
     addAtEnd(attr);
     return attr;
   }

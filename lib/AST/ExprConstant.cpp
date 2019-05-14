@@ -5438,6 +5438,12 @@ bool ExprEvaluatorBase<Derived>::VisitCXXReflectionTraitExpr(
     Ok = R.GetAssociatedReflection(Query, Result);
   else if (isNameQuery(Query))
     Ok = R.GetName(Query, Result);
+  else if (Query == ReflectionQuery::RQ_get_attribute) {
+    Ok = R.GetUserDefinedAttribute(Query, Args[2], Result);
+  }
+  else if (Query == ReflectionQuery::RQ_has_attribute) {
+    Ok = R.HasUserDefinedAttribute(Query, Args[2], Result);
+  }
   else
     return Error(E->getArg(0));
 

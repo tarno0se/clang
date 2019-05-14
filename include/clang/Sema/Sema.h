@@ -4847,6 +4847,9 @@ public:
                               const ParsedAttributesView &AttrList,
                               TypeResult Type, Decl *DeclFromDeclSpec);
 
+
+  ExprResult ActOnUserDefinedAttribute(Scope *CurScope, AccessSpecifier AS, Expr* Call);
+
   /// BuildCXXConstructExpr - Creates a complete call to a constructor,
   /// including handling of its default argument expressions.
   ///

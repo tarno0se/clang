@@ -2486,6 +2486,7 @@ private:
                                SourceLocation ScopeLoc);
 
   IdentifierInfo *TryParseCXX11AttributeIdentifier(SourceLocation &Loc);
+  ExprResult TryParseCXX11AttributeAsConstructor(SourceLocation &Loc);
 
   void MaybeParseMicrosoftAttributes(ParsedAttributes &attrs,
                                      SourceLocation *endLoc = nullptr) {

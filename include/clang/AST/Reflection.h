@@ -373,6 +373,9 @@ enum ReflectionQuery {
   RQ_get_name,
   RQ_get_display_name,
 
+  RQ_get_attribute,
+  RQ_has_attribute,
+
   // Labels for kinds of queries. These need to be updated when new
   // queries are added.
 
@@ -409,6 +412,7 @@ inline bool isAssociatedReflectionQuery(ReflectionQuery Q) {
 inline bool isNameQuery(ReflectionQuery Q) {
   return RQ_first_name <= Q && Q <= RQ_last_name;
 }
+
 
 /// The reflection class provides context for evaluating queries.
 ///
@@ -528,6 +532,12 @@ public:
 
   /// Returns the entity name designated by Q.
   bool GetName(ReflectionQuery, APValue &Result);
+
+  //Return the user defined attribute
+  bool GetUserDefinedAttribute(ReflectionQuery, APValue AttributeType, APValue &Result);
+
+  //Return whether a particular entity has a user defined attribute
+  bool HasUserDefinedAttribute(ReflectionQuery, APValue AttributeType, APValue &Result);
 
   /// True if A and B reflect the same entity.
   static bool Equal(ASTContext &Ctx, APValue const& X, APValue const& Y);

@@ -685,17 +685,16 @@ bool Parser::ParseUsingDeclarator(DeclaratorContext Context,
 ///     alias-declaration: C++11 [dcl.dcl]p1
 ///       'using' identifier attribute-specifier-seq[opt] = type-id ;
 ///
-Parser::DeclGroupPtrTy
-Parser::ParseUsingDeclaration(DeclaratorContext Context,
-                              const ParsedTemplateInfo &TemplateInfo,
-                              SourceLocation UsingLoc, SourceLocation &DeclEnd,
-                              AccessSpecifier AS) {
+Parser::DeclGroupPtrTy Parser::ParseUsingDeclaration(
+    DeclaratorContext Context, const ParsedTemplateInfo &TemplateInfo,
+    SourceLocation UsingLoc, SourceLocation &DeclEnd, AccessSpecifier AS) {
   // Check for misplaced attributes before the identifier in an
   // alias-declaration.
+
+  UsingDeclarator D;
   ParsedAttributesWithRange MisplacedAttrs(AttrFactory);
   MaybeParseCXX11Attributes(MisplacedAttrs);
 
-  UsingDeclarator D;
   bool InvalidDeclarator = ParseUsingDeclarator(Context, D);
 
   ParsedAttributesWithRange Attrs(AttrFactory);
@@ -4044,6 +4043,34 @@ IdentifierInfo *Parser::TryParseCXX11AttributeIdentifier(SourceLocation &Loc) {
   }
 }
 
+ExprResult Parser::TryParseCXX11AttributeAsConstructor(SourceLocation &Loc) {
+  if (TryAnnotateTypeOrScopeToken())
+    return ExprError();
+
+  if (!Actions.isSimpleTypeSpecifier(Tok.getKind()))
+    // We are trying to parse a simple-type-specifier but might not get such
+    // a token after error recovery.
+    return ExprError();
+
+  // postfix-expression: simple-type-specifier '(' expression-list[opt] ')'
+  //                     simple-type-specifier braced-init-list
+  //
+  DeclSpec DS(AttrFactory);
+
+  ParseCXXSimpleTypeSpecifier(DS);
+  if (Tok.isNot(tok::l_paren) &&
+      (!getLangOpts().CPlusPlus11 || Tok.isNot(tok::l_brace)))
+    return ExprError(Diag(Tok, diag::err_expected_lparen_after_type)
+                     << DS.getSourceRange());
+
+  if (Tok.is(tok::l_brace))
+    Diag(Tok, diag::warn_cxx98_compat_generalized_initializer_lists);
+
+  ExprResult expr = ParseCXXTypeConstructExpression(DS);
+  Loc = Tok.getEndLoc();
+  return expr;
+}
+
 static bool IsBuiltInOrStandardCXX11Attribute(IdentifierInfo *AttrName,
                                               IdentifierInfo *ScopeName) {
   switch (ParsedAttr::getKind(AttrName, ScopeName, ParsedAttr::AS_CXX11)) {
@@ -4218,6 +4245,20 @@ void Parser::ParseCXX11AttributeSpecifier(ParsedAttributes &attrs,
         SeenAttrs.insert({II, SourceLocation()});
       }
     }
+
+    SourceLocation Begin = Tok.getLocation();
+    TentativeParsingAction PA(*this);
+    ExprResult Ctr = TryParseCXX11AttributeAsConstructor(AttrLoc);
+    if(Ctr.isUsable()) {
+       ExprResult Res = Actions.ActOnUserDefinedAttribute(getCurScope(), getAccessSpecifierIfPresent(), Ctr.get());
+       if(Res.get()) {
+         attrs.addNew(Res.get(), SourceRange(Begin, AttrLoc));
+       }
+       PA.Commit();
+       continue;
+    }
+    PA.Revert();
+
 
     AttrName = TryParseCXX11AttributeIdentifier(AttrLoc);
     if (!AttrName)

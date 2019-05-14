@@ -233,6 +233,8 @@ bool ParsedAttr::isTypeAttr() const { return getInfo(*this).IsType; }
 bool ParsedAttr::isStmtAttr() const { return getInfo(*this).IsStmt; }
 
 bool ParsedAttr::existsInTarget(const TargetInfo &Target) const {
+  if(getKind() == UserDefinedAttribute)
+    return false;
   return getInfo(*this).ExistsInTarget(Target);
 }
 
